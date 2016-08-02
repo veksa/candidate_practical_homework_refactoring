@@ -1,10 +1,15 @@
-#Task:
+## Quick start
+
+* Download zip archive.
+* Install packages: `composer update`.
+
+## Task:
 Refactor the LanguageBatchBo!
 The goals are:
 * increase the inner quality of the code and
 * (optional) increase test coverage with unit tests
 
-#Rules:
+## Rules:
 * Create local git repo for the project
 * Commit after every step when the system is in working condition
 * The interface of the LanguageBatchBo can't be changed (the generate_language_files.php should remain the same), but (of course) it's content can change and can split into new classes.
