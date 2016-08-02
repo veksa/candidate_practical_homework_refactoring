@@ -1,2 +1,11 @@
-.idea
-vendor
+## Directory-based project format:
+.idea/
+
+## Composer
+vendor/
+
+## Cache
+cache
+
+## Tests
+build/

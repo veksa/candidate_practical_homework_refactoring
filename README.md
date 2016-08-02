@@ -2,6 +2,10 @@
 
 * Download zip archive.
 * Install packages: `composer update`.
+* Run project: `php src/generate_language_files.php`.
+* Run tests: `composer test`
+* See coverage in build/coverage
+* Be happy
 
 ## Task:
 Refactor the LanguageBatchBo!
