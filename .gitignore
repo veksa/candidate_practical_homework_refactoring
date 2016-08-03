@@ -2,10 +2,10 @@
 .idea/
 
 ## Composer
-vendor/
+/vendor/
 
 ## Cache
-cache
+/cache/
 
 ## Tests
-build/
+/build/
