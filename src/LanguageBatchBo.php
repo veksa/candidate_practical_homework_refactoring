@@ -54,32 +54,39 @@ class LanguageBatchBo
     }
 
     /**
-     * Contains the applications which ones require translations.
-     *
-     * @var array
-     */
-    protected static $applications = array();
-
-    /**
      * Starts the language file generation.
      *
-     * @return void
+     * @throws LanguageBatchBoException
      */
     public function generateLanguageFiles()
     {
         // The applications where we need to translate.
-        self::$applications = Config::get('system.translated_applications');
+        $applications = Config::get('system.translated_applications');
 
         $this->logger->info("\nGenerating language files\n");
-        foreach (self::$applications as $application => $languages) {
-            $this->logger->info("[APPLICATION: " . $application . "]\n");
-            foreach ($languages as $language) {
-                $this->logger->info("\t[LANGUAGE: " . $language . "]");
-                if (self::getLanguageFile($application, $language)) {
-                    $this->logger->info(" OK\n");
-                } else {
-                    throw new LanguageBatchBoException('Unable to generate language file!');
-                }
+        foreach ($applications as $application => $languages) {
+            $this->generateApplicationLanguageFile($application, $languages);
+        }
+    }
+
+    /**
+     * Starts the application language file generation.
+     *
+     * @param $application
+     * @param $languages
+     *
+     * @throws LanguageBatchBoException
+     * @throws \Exception
+     */
+    public function generateApplicationLanguageFile($application, $languages)
+    {
+        $this->logger->info("[APPLICATION: " . $application . "]\n");
+        foreach ($languages as $language) {
+            $this->logger->info("\t[LANGUAGE: " . $language . "]");
+            if (self::getLanguageFile($application, $language)) {
+                $this->logger->info(" OK\n");
+            } else {
+                throw new LanguageBatchBoException('Unable to generate language file!');
             }
         }
     }
@@ -157,7 +164,7 @@ class LanguageBatchBo
             foreach ($languages as $language) {
                 $xmlContent = self::getAppletLanguageFile($appletLanguageId, $language);
                 $xmlFile = '/lang_' . $language . '.xml';
-                
+
                 if (!$this->cache->save((new CacheItem($xmlFile))->set($xmlContent))) {
                     throw new LanguageBatchBoException("Error save cache in xml ($xmlFile)");
                 }
