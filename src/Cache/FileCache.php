@@ -12,6 +12,41 @@ class FileCache implements CacheItemPoolInterface
      */
     private $deferredStack = [];
 
+    /** @var string */
+    private $folder;
+
+    public function __construct($folder = null)
+    {
+        $this->folder = $folder;
+        if (!$this->folder) {
+            $this->folder = '/cache';
+        }
+
+        $this->createFolder();
+    }
+
+    public function setFolder($folder)
+    {
+        $this->folder = $folder;
+
+        $this->createFolder();
+    }
+
+    /**
+     * @return string
+     */
+    private function getFolder()
+    {
+        return $this->folder;
+    }
+
+    private function createFolder()
+    {
+        if (!is_dir($this->folder)) {
+            @mkdir($this->folder, 0775, true);
+        }
+    }
+
     /**
      * Returns a Cache Item representing the specified key.
      *
@@ -139,6 +174,7 @@ class FileCache implements CacheItemPoolInterface
         if (!$item->isHit()) {
             return false;
         }
+
         $bytes = file_put_contents($this->filenameFor($item->getKey()), serialize($item));
 
         return (false !== $bytes);
@@ -170,7 +206,7 @@ class FileCache implements CacheItemPoolInterface
             $result = $result && $this->save($item);
             unset($this->deferredStack[$key]);
         }
-        
+
         return $result;
     }
 
@@ -191,20 +227,6 @@ class FileCache implements CacheItemPoolInterface
         if (!CacheItem::isValidKey($key)) {
             throw new InvalidArgumentException('invalid key: ' . var_export($key, true));
         }
-    }
-
-    /**
-     * @return string
-     */
-    private function getFolder()
-    {
-        $folder = 'cache/';
-
-        if (!is_dir($folder)) {
-            @mkdir($folder, 0775, true);
-        }
-        
-        return $folder;
     }
 
     public function __destruct()

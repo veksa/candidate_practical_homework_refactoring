@@ -10,6 +10,18 @@ use Language\Logger\Logger as AbstractLogger;
  */
 class CliLogger extends AbstractLogger
 {
+    private $setTimestamp;
+
+    /**
+     * CliLogger constructor.
+     *
+     * @param null|bool $logFile
+     */
+    public function __construct($setTimestamp = true)
+    {
+        $this->setTimestamp = $setTimestamp;
+    }
+
     /**
      * Log implementation
      *
@@ -20,7 +32,9 @@ class CliLogger extends AbstractLogger
      */
     public function log($level, $message, array $context = [])
     {
-        $message = $this->formatMessage($level, $message);
+        if ($this->setTimestamp) {
+            $message = $this->formatMessage($level, $message);
+        }
 
         echo $message;
     }

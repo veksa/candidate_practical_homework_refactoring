@@ -34,7 +34,7 @@ class FileLogger extends Logger
 
         $logPath = dirname($this->logFile);
         if (!is_dir($logPath)) {
-            mkdir($logPath, 0775, true);
+            @mkdir($logPath, 0775, true);
         }
 
         if (($this->fp = @fopen($this->logFile, 'a')) === false) {

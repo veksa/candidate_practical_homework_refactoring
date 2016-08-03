@@ -1,11 +1,58 @@
 <?php
 namespace Language;
 
+use Language\Cache\CacheItem;
+use Language\Cache\FileCache;
+use Language\Exceptions\LanguageBatchBoException;
+use Language\Logger\CliLogger;
+use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
+
 /**
  * Business logic related to generating language files.
  */
 class LanguageBatchBo
 {
+    /** @var LoggerInterface */
+    private $logger;
+
+    /** @var CacheItemPoolInterface */
+    private $cache;
+
+    /**
+     * LanguageBatchBo constructor.
+     * @param LoggerInterface $logger
+     * @param CacheItemPoolInterface $cache
+     */
+    public function __construct($logger = null, $cache = null)
+    {
+        $this->logger = $logger;
+        if (!$this->logger) {
+            $this->logger = new CliLogger($withTimeStamp = false);
+        }
+
+        $this->cache = $cache;
+        if (!$this->cache) {
+            $this->cache = new FileCache;
+        }
+    }
+
+    /**
+     * @param LoggerInterface $logger
+     */
+    public function setLogger($logger)
+    {
+        $this->logger = $logger;
+    }
+
+    /**
+     * @param CacheItemPoolInterface $cache
+     */
+    public function setCache($cache)
+    {
+        $this->cache = $cache;
+    }
+
     /**
      * Contains the applications which ones require translations.
      *
@@ -18,20 +65,20 @@ class LanguageBatchBo
      *
      * @return void
      */
-    public static function generateLanguageFiles()
+    public function generateLanguageFiles()
     {
         // The applications where we need to translate.
         self::$applications = Config::get('system.translated_applications');
 
-        echo "\nGenerating language files\n";
+        $this->logger->info("\nGenerating language files\n");
         foreach (self::$applications as $application => $languages) {
-            echo "[APPLICATION: " . $application . "]\n";
+            $this->logger->info("[APPLICATION: " . $application . "]\n");
             foreach ($languages as $language) {
-                echo "\t[LANGUAGE: " . $language . "]";
+                $this->logger->info("\t[LANGUAGE: " . $language . "]");
                 if (self::getLanguageFile($application, $language)) {
-                    echo " OK\n";
+                    $this->logger->info(" OK\n");
                 } else {
-                    throw new \Exception('Unable to generate language file!');
+                    throw new LanguageBatchBoException('Unable to generate language file!');
                 }
             }
         }
@@ -47,7 +94,7 @@ class LanguageBatchBo
      *
      * @return bool The success of the operation.
      */
-    protected static function getLanguageFile($application, $language)
+    protected function getLanguageFile($application, $language)
     {
         $languageResponse = ApiCall::call(
             'system_api',
@@ -65,17 +112,8 @@ class LanguageBatchBo
             throw new \Exception('Error during getting language file: (' . $application . '/' . $language . ')');
         }
 
-        // If we got correct data we store it.
-        $destination = self::getLanguageCachePath($application) . $language . '.php';
-        // If there is no folder yet, we'll create it.
-        var_dump($destination);
-        if (!is_dir(dirname($destination))) {
-            mkdir(dirname($destination), 0755, true);
-        }
-
-        $result = file_put_contents($destination, $languageResponse['data']);
-
-        return (bool)$result;
+        $this->cache->setFolder(self::getLanguageCachePath($application));
+        return $this->cache->save((new CacheItem($language . '.php'))->set($languageResponse['data']));
     }
 
     /**
@@ -97,51 +135,39 @@ class LanguageBatchBo
      *
      * @return void
      */
-    public static function generateAppletLanguageXmlFiles()
+    public function generateAppletLanguageXmlFiles()
     {
         // List of the applets [directory => applet_id].
         $applets = array(
             'memberapplet' => 'JSM2_MemberApplet'
         );
 
-        echo "\nGetting applet language XMLs..\n";
+        $this->logger->info("\nGetting applet language XMLs..\n");
 
         foreach ($applets as $appletDirectory => $appletLanguageId) {
-            echo " Getting > $appletLanguageId ($appletDirectory) language xmls..\n";
+            $this->logger->info(" Getting > $appletLanguageId ($appletDirectory) language xmls..\n");
             $languages = self::getAppletLanguages($appletLanguageId);
             if (empty($languages)) {
                 throw new \Exception('There is no available languages for the ' . $appletLanguageId . ' applet.');
             } else {
-                echo ' - Available languages: ' . implode(', ', $languages) . "\n";
+                $this->logger->info(' - Available languages: ' . implode(', ', $languages) . "\n");
             }
-            $path = Config::get('system.paths.root') . '/cache/flash';
+
+            $this->cache->setFolder(Config::get('system.paths.root') . '/cache/flash');
             foreach ($languages as $language) {
                 $xmlContent = self::getAppletLanguageFile($appletLanguageId, $language);
-                $xmlFile = $path . '/lang_' . $language . '.xml';
+                $xmlFile = '/lang_' . $language . '.xml';
+                
+                if (!$this->cache->save((new CacheItem($xmlFile))->set($xmlContent))) {
+                    throw new LanguageBatchBoException("Error save cache in xml ($xmlFile)");
+                }
 
-                self::cacheAppletLanguage($xmlFile, $xmlContent);
-                echo " OK saving $xmlFile was successful.\n";
+                $this->logger->info(" OK saving $xmlFile was successful.\n");
             }
-            echo " < $appletLanguageId ($appletDirectory) language xml cached.\n";
+            $this->logger->info(" < $appletLanguageId ($appletDirectory) language xml cached.\n");
         }
 
-        echo "\nApplet language XMLs generated.\n";
-    }
-
-    private function cacheAppletLanguage($xmlFile, $xmlContent)
-    {
-        $dir = dirname($xmlFile);
-
-        if (!file_exists($dir)) {
-            if (!mkdir($dir)) {
-                throw new \Exception("Error create dir " . $dir);
-            }
-        }
-
-        $res = file_put_contents($xmlFile, $xmlContent);
-        if ($res === false) {
-            throw new \Exception("Error save cache in xml ($xmlFile)");
-        }
+        $this->logger->info("\nApplet language XMLs generated.\n");
     }
 
     /**
