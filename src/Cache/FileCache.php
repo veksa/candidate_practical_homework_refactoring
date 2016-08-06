@@ -65,7 +65,7 @@ class FileCache implements CacheItemPoolInterface
 
         $file = @file_get_contents($this->filenameFor($key));
         if (false !== $file) {
-            return unserialize($file);
+            return (new CacheItem($key))->set($file);
         }
 
         return new CacheItem($key);
@@ -175,7 +175,7 @@ class FileCache implements CacheItemPoolInterface
             return false;
         }
 
-        $bytes = file_put_contents($this->filenameFor($item->getKey()), serialize($item));
+        $bytes = file_put_contents($this->filenameFor($item->getKey()), $item->get());
 
         return (false !== $bytes);
     }
