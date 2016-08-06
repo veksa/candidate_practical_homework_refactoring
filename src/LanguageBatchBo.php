@@ -62,11 +62,43 @@ class LanguageBatchBo
     }
 
     /**
+     * @return CliLogger|LoggerInterface
+     */
+    public function getLogger()
+    {
+        return $this->logger;
+    }
+
+    /**
      * @param CacheItemPoolInterface $cache
      */
     public function setCache($cache)
     {
         $this->cache = $cache;
+    }
+
+    /**
+     * @return FileCache|CacheItemPoolInterface
+     */
+    public function getCache()
+    {
+        return $this->cache;
+    }
+
+    /**
+     * @param $applets
+     */
+    public function setApplets($applets)
+    {
+        $this->applets = $applets;
+    }
+
+    /**
+     * @return array
+     */
+    public function getApplets()
+    {
+        return $this->applets;
     }
 
     /**
@@ -103,7 +135,7 @@ class LanguageBatchBo
             try {
                 $this->generateLanguageFile($language);
                 $this->logger->info("\tOK");
-            } catch (LanguageBatchBoException $e) {
+            } catch (\Exception $e) {
                 $this->logger->error("\tERROR: " . $e->getMessage());
             }
         }
@@ -133,24 +165,25 @@ class LanguageBatchBo
      */
     public function generateAppletLanguageXmlFiles()
     {
+        $this->cache->setFolder(Config::get('system.paths.root') . '/cache/flash');
+        
         $this->logger->info("\nGetting applet language XMLs..\n");
         foreach ($this->applets as $appletDirectory => $appletLanguageId) {
             $this->logger->info(" Getting > $appletLanguageId ($appletDirectory) language xmls..\n");
-            $languages = $this->api->run(new AppletLanguages($appletLanguageId));
+            $languages = $this->getAppletLanguages($appletLanguageId);
             if (empty($languages)) {
                 throw new \Exception('There is no available languages for the ' . $appletLanguageId . ' applet.');
             } else {
                 $this->logger->info(' - Available languages: ' . implode(', ', $languages) . "\n");
             }
-
-            $this->cache->setFolder(Config::get('system.paths.root') . '/cache/flash');
+            
             foreach ($languages as $language) {
                 $this->logger->info("\t[LANGUAGE: " . $language . "]");
 
                 try {
                     $this->generateLanguageXmlFile($language, $appletLanguageId);
                     $this->logger->info("\tOK");
-                } catch (LanguageBatchBoException $e) {
+                } catch (\Exception $e) {
                     $this->logger->error("\tERROR: " . $e->getMessage());
                 }
             }
@@ -158,6 +191,18 @@ class LanguageBatchBo
         }
 
         $this->logger->info("\nApplet language XMLs generated.\n");
+    }
+
+    /**
+     * @param $appletLanguageId
+     *
+     * @return mixed
+     *
+     * @throws Exceptions\ApiException
+     */
+    public function getAppletLanguages($appletLanguageId)
+    {
+        return $this->api->run(new AppletLanguages($appletLanguageId));
     }
 
     /**
